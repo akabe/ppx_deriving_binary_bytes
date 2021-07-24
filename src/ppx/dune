@@ -1,0 +1,16 @@
+(library
+ (name          ppx_deriving_binary)
+ (public_name   ppx_deriving_binary)
+ (synopsis      "[@@deriving binary]")
+ (preprocess    (pps ppxlib.metaquot ppx_deriving.show))
+ (flags         (-w A-4-31-33-34-39-41-42-43-44-45-48-49-50-58
+                 -safe-string
+                 -strict-sequence
+                 -strict-formats
+                 -short-paths))
+ (libraries     compiler-libs.common
+                ppxlib
+                ppx_deriving.runtime
+                ppx_deriving.api)
+ (kind          ppx_deriver)
+ (modules       Ppx_deriving_binary))
