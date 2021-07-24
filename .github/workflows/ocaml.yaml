@@ -1,0 +1,37 @@
+name: OCaml
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ocaml-compiler:
+          - 4.10.0
+          - 4.11.0
+          - 4.12.0
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.opam
+          key: ${{ runner.os }}-opam-${{ hashFiles('**/*.opam') }}
+          restore-keys: ${{ runner.os }}-opam-
+      - run: ./git/pre-commit.sh
+      - run: opam lint *.opam
+      - run: opam install . --deps-only --with-test
+      - run: opam exec -- dune build
+      - run: opam exec -- dune runtest
