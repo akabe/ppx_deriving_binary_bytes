@@ -36,4 +36,6 @@ let () =
   register (create "binary_bytes_of"
               ~core_type:(Encoder.encoder_of_core_type
                             ~deriver ~path:"<abstract>")
+              ~type_decl_str:(Encoder.type_decl_str ~deriver)
+              ~type_decl_sig:Encoder.type_decl_sig
               ())
