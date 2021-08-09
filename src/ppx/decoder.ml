@@ -110,11 +110,11 @@ and decoder_of_polymorphic_variant
     ~loc
     row_fields attrs
   =
-  let base_type = Astmisc.attr_base_type ~deriver ~loc attrs in
+  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
   Variant.constructors_of_ocaml_row_fields ~deriver row_fields
   |> decoder_of_constructors
     ~deriver ~path ~base_type ~loc
-    ~constructor:Exp.variant
+    ~constructor:(fun name -> Exp.variant name)
 
 and decoder_of_constructors
     ~deriver
@@ -174,3 +174,85 @@ and decoder_of_record ~deriver ~path ~constructor ~loc labels =
       labels
       [%expr ([%e record], _i)] in
   [%expr fun _b _i -> [%e body]]
+
+let decoder_of_variant ~deriver ~path ~loc type_decl constrs attrs =
+  Variant.assert_not_GADT type_decl constrs ;
+  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
+  Variant.constructors_of_ocaml_constructors ~deriver constrs
+  |> decoder_of_constructors
+    ~deriver
+    ~path
+    ~base_type
+    ~loc
+    ~constructor:(fun name -> Exp.construct (Astmisc.mklid name))
+
+let mk_record labels =
+  let label_bindings =
+    List.map
+      (fun ld -> (Astmisc.mklid ld.pld_name.txt, evar ld.pld_name.txt))
+      labels in
+  Exp.record label_bindings None
+
+let decoder_of_record_bitfield ~deriver ~path ~loc base_type labels =
+  let open Bitfield in
+  let mk_rec = mk_record labels in
+  let fields = Bitfield.of_ocaml_label_declarations ~deriver labels in
+  let dec =
+    List.fold_right
+      (fun field acc ->
+         let name = pvar field.rbf_name in
+         let loc = field.rbf_loc in
+         let ofs = Exp.constant (Const.int field.rbf_offset) in
+         let mask = Exp.constant (Const.int field.rbf_mask) in
+         let rhs = [%expr (_x lsr [%e ofs]) land [%e mask]] in
+         [%expr let [%p name] = [%e rhs] in [%e acc]])
+      fields mk_rec in
+  let base_decoder = decoder_of_core_type ~deriver ~path base_type in
+  [%expr
+    fun _cs _i ->
+      let _x, _i = [%e base_decoder] _cs _i in
+      ([%e dec], _i)]
+
+let str_decoder_of_type_decl ~deriver ~path type_decl =
+  let loc = type_decl.ptype_loc in
+  let path = String.concat "." path ^ "." ^ type_decl.ptype_name.txt in
+  let decoder = match type_decl.ptype_kind with
+    (* Record type declaration: *)
+    | Ptype_record labels ->
+      begin
+        match Astmisc.attr_base_type ~deriver type_decl.ptype_attributes with
+        | None ->
+          decoder_of_record
+            ~deriver ~path ~loc:type_decl.ptype_loc labels
+            ~constructor:(fun x -> x)
+        | Some base_type ->
+          decoder_of_record_bitfield ~deriver ~path ~loc base_type labels
+      end
+    (* (Non-polymorphics) varia nt type declarations: *)
+    | Ptype_variant constrs ->
+      decoder_of_variant ~deriver ~path ~loc type_decl constrs type_decl.ptype_attributes
+    (* Other types: *)
+    | Ptype_abstract | Ptype_open ->
+      match type_decl.ptype_manifest with
+      | Some typ -> decoder_of_core_type ~deriver ~path typ
+      | None ->
+        Ppx_deriving.raise_errorf
+          "ppx_deriving_cstruct does not support empty types: %s"
+          type_decl.ptype_name.txt in
+  (* Converts type parameters into function parameters *)
+  Astmisc.parametrize_expression type_decl.ptype_params decoder
+
+let type_decl_str ~deriver ~options:_ ~path type_decls =
+  [Astmisc.create_str_value
+     ~mkexp:(str_decoder_of_type_decl ~deriver ~path)
+     affix type_decls]
+
+let sig_decoder_of_type_decl type_decl =
+  Astmisc.create_sig_value
+    affix type_decl
+    ~mktype:(fun t ->
+        let loc = t.ptyp_loc in
+        [%type: Bytes.t -> int -> [%t t] * int])
+
+let type_decl_sig ~options:_ ~path:_ type_decls =
+  List.map (sig_decoder_of_type_decl) type_decls

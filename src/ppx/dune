@@ -16,4 +16,5 @@
  (modules       Ppx_deriving_binary
                 Decoder
                 Variant
+                Bitfield
                 Astmisc))
