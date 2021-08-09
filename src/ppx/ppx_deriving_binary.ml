@@ -39,3 +39,14 @@ let () =
               ~type_decl_str:(Encoder.type_decl_str ~deriver)
               ~type_decl_sig:Encoder.type_decl_sig
               ())
+
+let () =
+  let deriver = "binary_bytes" in
+  register (create "binary_bytes"
+              ~type_decl_str:(fun ~options ~path type_decls ->
+                  Encoder.type_decl_str ~deriver ~options ~path type_decls
+                  @ Decoder.type_decl_str ~deriver ~options ~path type_decls)
+              ~type_decl_sig:(fun ~options ~path type_decls ->
+                  Encoder.type_decl_sig ~options ~path type_decls
+                  @ Decoder.type_decl_sig ~options ~path type_decls)
+              ())
