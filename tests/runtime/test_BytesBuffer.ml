@@ -1,6 +1,6 @@
 open Format
 open OUnit2
-open Ppx_deriving_binary_runtime
+open Ppx_deriving_binary_bytes_runtime
 
 let printer = asprintf "%a" Printer.pp_string_hex
 

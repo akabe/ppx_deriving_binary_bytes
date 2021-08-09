@@ -3,8 +3,8 @@ synopsis: "Type-driven generation of binary serializers and deserializers"
 maintainer: ["Akinori Abe"]
 authors: ["Akinori Abe"]
 license: "MIT"
-homepage: "https://github.com/akabe/ppx_deriving_binary"
-bug-reports: "https://github.com/akabe/ppx_deriving_binary/issues"
+homepage: "https://github.com/akabe/ppx_deriving_binary_bytes"
+bug-reports: "https://github.com/akabe/ppx_deriving_binary_bytes/issues"
 build: [
   [ "dune" "subst" ] {pinned}
   [ "dune" "build" "-p" name "-j" jobs ]

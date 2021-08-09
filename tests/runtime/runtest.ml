@@ -1,7 +1,7 @@
 open OUnit2
 
 let suite =
-  "ppx_deriving_binary" >::: [
+  "ppx_deriving_binary_bytes" >::: [
     "BytesBuffer" >: Test_BytesBuffer.suite;
     "CString" >: Test_CString.suite;
     "PrefixedString" >: Test_PrefixedString.suite;

@@ -1,5 +1,5 @@
 open OUnit2
-open Ppx_deriving_binary_runtime
+open Ppx_deriving_binary_bytes_runtime
 
 let test_of_binary_bytes ctxt =
   let b = Bytes.of_string "\x00\x05HelloABC" in

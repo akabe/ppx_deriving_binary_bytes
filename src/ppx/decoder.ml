@@ -1,4 +1,4 @@
-(* ppx_deriving_binary
+(* ppx_deriving_binary_bytes
 
    Copyright (c) 2021 Akinori Abe
 
@@ -50,17 +50,17 @@ let rec decoder_of_core_type ~deriver ~path typ =
   | [%type: string]
   | [%type: String.t] ->
     decoder_of_string_like_type ~deriver typ
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.string_of_binary_bytes]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.string_of_binary_bytes]
   | [%type: bytes]
   | [%type: Bytes.t] ->
     decoder_of_string_like_type ~deriver typ
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.bytes_of_binary_bytes]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.bytes_of_binary_bytes]
   | [%type: [%t? elt] list] ->
     decoder_of_list_like_type ~deriver ~path typ elt
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.list_of_binary_bytes]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.list_of_binary_bytes]
   | [%type: [%t? elt] array] ->
     decoder_of_list_like_type ~deriver ~path typ elt
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.array_of_binary_bytes]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.array_of_binary_bytes]
   | [%type: [%t? typ] ref] ->
     [%expr fun _b _i ->
       let _x, _i = [%e decoder_of_core_type ~deriver ~path typ] _b _i in
@@ -147,7 +147,7 @@ and decoder_of_constructors
   in
   let cases = List.map case_of_constructor constrs in
   let err_mesg = Astmisc.estring ~loc path in
-  let raise_ = [%expr raise (Ppx_deriving_binary_runtime.Std.Parse_error [%e err_mesg])] in
+  let raise_ = [%expr raise (Ppx_deriving_binary_bytes_runtime.Std.Parse_error [%e err_mesg])] in
   let cases = cases @ [Exp.case [%pat? _] raise_] in
   let base_decoder = decoder_of_core_type ~deriver ~path base_type in
   [%expr
@@ -238,7 +238,7 @@ let str_decoder_of_type_decl ~deriver ~path type_decl =
       | Some typ -> decoder_of_core_type ~deriver ~path typ
       | None ->
         Ppx_deriving.raise_errorf
-          "ppx_deriving_binary does not support empty types: %s"
+          "ppx_deriving_binary_bytes does not support empty types: %s"
           type_decl.ptype_name.txt in
   (* Converts type parameters into function parameters *)
   Astmisc.parametrize_expression type_decl.ptype_params decoder

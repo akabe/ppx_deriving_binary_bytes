@@ -1,4 +1,4 @@
-(* ppx_deriving_binary
+(* ppx_deriving_binary_bytes
 
    Copyright (c) 2021 Akinori Abe
 
@@ -42,7 +42,7 @@ let attr_base_type_exn ~deriver ~loc attrs =
   | Some core_type -> core_type
   | None ->
     Ppx_deriving.raise_errorf ~loc
-      "ppx_deriving_binary requires [@base_type: t] for variants or polymorphic variants"
+      "ppx_deriving_binary_bytes requires [@base_type: t] for variants or polymorphic variants"
 
 let attr_length ~deriver attrs =
   Ppx_deriving.(attrs |> attr ~deriver "length" |> Arg.(get_attr ~deriver int))
@@ -52,7 +52,7 @@ let attr_length_exn ~deriver ~loc attrs =
   | Some x -> x
   | None ->
     Ppx_deriving.raise_errorf ~loc
-      "ppx_deriving_binary requires [@length] for string, bytes, list and array"
+      "ppx_deriving_binary_bytes requires [@length] for string, bytes, list and array"
 
 let attr_offset ~deriver attrs =
   Ppx_deriving.(attrs |> attr ~deriver "offset" |> Arg.(get_attr ~deriver int))

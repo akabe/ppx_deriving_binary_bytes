@@ -1,4 +1,4 @@
-(* ppx_deriving_binary
+(* ppx_deriving_binary_bytes
 
    Copyright (c) 2021 Akinori Abe
 
@@ -60,16 +60,16 @@ let rec encoder_of_core_type ~deriver ~path typ =
   | [%type: unit] -> [%expr fun _b () -> ()]
   | [%type: string] ->
     encoder_of_string_like_type ~deriver ~loc typ
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.binary_bytes_of_string]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.binary_bytes_of_string]
   | [%type: bytes] ->
     encoder_of_string_like_type ~deriver ~loc typ
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.binary_bytes_of_bytes]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.binary_bytes_of_bytes]
   | [%type: [%t? elt] list] ->
     encoder_of_list_like_type ~deriver ~path ~loc typ elt
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.binary_bytes_of_list]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.binary_bytes_of_list]
   | [%type: [%t? elt] array] ->
     encoder_of_list_like_type ~deriver ~path ~loc typ elt
-      ~func:[%expr Ppx_deriving_binary_runtime.Std.binary_bytes_of_array]
+      ~func:[%expr Ppx_deriving_binary_bytes_runtime.Std.binary_bytes_of_array]
   | [%type: [%t? typ] ref] ->
     [%expr fun _b _x -> [%e encoder_of_core_type ~deriver ~path typ] _b (!_x)]
   | { ptyp_desc = Ptyp_constr (lid, args); _ } ->
@@ -83,7 +83,7 @@ let rec encoder_of_core_type ~deriver ~path typ =
     [%expr fun _b [%p prj] -> [%e fun_body]]
   | { ptyp_desc = Ptyp_var name; _ } ->
     [%expr ([%e evar ("poly_" ^ name)]
-            : Ppx_deriving_binary_runtime.BytesBuffer.t -> _ -> unit)]
+            : Ppx_deriving_binary_bytes_runtime.BytesBuffer.t -> _ -> unit)]
   | { ptyp_desc = Ptyp_variant (rows, Closed, None); _ } ->
     encoder_of_polymorphic_variant ~deriver ~path ~loc rows typ.ptyp_attributes
   (* Errors *)
@@ -213,7 +213,7 @@ let str_encoder_of_type_decl ~deriver ~path type_decl =
       | Some typ -> encoder_of_core_type ~deriver ~path typ
       | None ->
         Ppx_deriving.raise_errorf
-          "ppx_deriving_binary does not support empty types: %s"
+          "ppx_deriving_binary_bytes does not support empty types: %s"
           type_decl.ptype_name.txt in
   (* Converts type parameters into function parameters *)
   Astmisc.parametrize_expression type_decl.ptype_params encoder
@@ -228,7 +228,7 @@ let sig_encoder_of_type_decl type_decl =
     affix type_decl
     ~mktype:(fun t ->
         let loc = t.ptyp_loc in
-        [%type: Ppx_deriving_binary_runtime.BytesBuffer.t -> [%t t] -> unit])
+        [%type: Ppx_deriving_binary_bytes_runtime.BytesBuffer.t -> [%t t] -> unit])
 
 let type_decl_sig ~options:_ ~path:_ type_decls =
   List.map (sig_encoder_of_type_decl) type_decls

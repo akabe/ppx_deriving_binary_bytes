@@ -1,6 +1,6 @@
 open Format
 open OUnit2
-open Ppx_deriving_binary_runtime.Std
+open Ppx_deriving_binary_bytes_runtime.Std
 
 let b_ = Bytes.of_string
 

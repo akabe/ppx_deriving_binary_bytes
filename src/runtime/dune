@@ -1,6 +1,6 @@
 (library
- (name          ppx_deriving_binary_runtime)
- (public_name   ppx_deriving_binary.runtime)
+ (name          ppx_deriving_binary_bytes_runtime)
+ (public_name   ppx_deriving_binary_bytes.runtime)
  (flags         (-w A-4-31-33-34-39-41-42-43-44-45-48-49-50-58
                  -safe-string -strict-sequence -strict-formats -short-paths))
  (modules       Std

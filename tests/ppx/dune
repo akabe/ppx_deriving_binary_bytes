@@ -1,9 +1,9 @@
 (executables
  (names      runtest)
- (preprocess (pps ppx_deriving_binary ppx_deriving.show))
+ (preprocess (pps ppx_deriving_binary_bytes ppx_deriving.show))
  (libraries  ounit2
              ppx_deriving.runtime
-             ppx_deriving_binary.runtime)
+             ppx_deriving_binary_bytes.runtime)
  (flags      (-w A-33-39-41-44-45
                -safe-string -strict-sequence -strict-formats
                -short-paths -annot -bin-annot)))
