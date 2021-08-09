@@ -35,6 +35,10 @@ open Variant
 
 let affix = `Prefix "binary_bytes_of"
 
+let prj_tuple = function
+  | [(v, _)] -> pvar v
+  | vars_typs -> Pat.tuple (List.map (fun (v, _) -> pvar v) vars_typs)
+
 let prj_record labels =
   let lid_var =
     List.map
@@ -74,12 +78,14 @@ let rec encoder_of_core_type ~deriver ~path typ =
     app f args'
   | { ptyp_desc = Ptyp_tuple typs; _ } ->
     let vars_typs = List.mapi (fun i t -> (sprintf "_%d" i, t)) typs in
-    let prj = Pat.tuple (List.map (fun (v, _) -> pvar v) vars_typs) in
+    let prj = prj_tuple vars_typs in
     let fun_body = encoding_of_tuple_type ~loc ~deriver ~path vars_typs in
     [%expr fun _b [%p prj] -> [%e fun_body]]
   | { ptyp_desc = Ptyp_var name; _ } ->
     [%expr ([%e evar ("poly_" ^ name)]
             : Ppx_deriving_binary_runtime.BytesBuffer.t -> _ -> unit)]
+  | { ptyp_desc = Ptyp_variant (rows, Closed, None); _ } ->
+    encoder_of_polymorphic_variant ~deriver ~path ~loc rows typ.ptyp_attributes
   (* Errors *)
   | _ ->
     Ppx_deriving.raise_errorf ~loc "%s cannot be derived for %s"
@@ -107,4 +113,56 @@ and encoding_of_tuple_type ~deriver ~path ~loc vars_typs =
     List.map
       (fun (v, t) -> (v, encoder_of_core_type ~deriver ~path t))
       vars_typs in
+  encoding_of_compound_type ~loc vars_encoders
+
+and encoder_of_polymorphic_variant ~deriver ~path ~loc row_fields attrs =
+  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
+  Variant.constructors_of_ocaml_row_fields ~deriver row_fields
+  |> encoder_variant_of_constructors
+    ~deriver ~path ~loc ~base_type ~constructor:Pat.variant
+
+and encoder_variant_of_constructors
+    ~deriver
+    ~path
+    ~loc
+    ~base_type
+    ~constructor
+    (constrs : Variant.constructor list)
+  =
+  let base_encoder = encoder_of_core_type ~deriver ~path base_type in
+  let cases =
+    constrs
+    |> List.map (fun c ->
+        let name = c.con_name in
+        let loc = c.con_loc in
+        let set_tag = [%expr [%e base_encoder] _b [%e Exp.constant c.con_value]] in
+        let path = path ^ "." ^ c.con_name in
+        match c.con_args with
+        | `TUPLE [] -> (* without arguments *)
+          Exp.case (constructor name None) set_tag
+        | `TUPLE typs -> (* with tuple arguments *)
+          let vars_typs = List.mapi (fun i t -> (sprintf "_%d" i, t)) typs in
+          let prj = prj_tuple vars_typs in
+          let fun_body = encoding_of_tuple_type ~loc ~deriver ~path vars_typs in
+          let enc = Exp.sequence set_tag fun_body in
+          Exp.case (constructor name (Some prj)) enc
+        | `RECORD labels -> (* with record arguments *)
+          let enc_record = encoding_of_record_type ~deriver ~path ~loc labels in
+          let enc = Exp.sequence set_tag enc_record in
+          Exp.case (constructor name (Some (prj_record labels))) enc) in
+  [%expr fun _b -> [%e Exp.function_ cases]]
+
+and encoding_of_record_type ~deriver ~path ~loc labels =
+  let vars_encoders =
+    List.map
+      (fun ld ->
+         let path = path ^ "." ^ ld.pld_name.txt in
+         let encoder = match attr_encoder ~deriver ld.pld_attributes with
+           | None -> encoder_of_core_type ~deriver ~path ld.pld_type
+           | Some (labels, encoder) ->
+             let args = List.map (fun s -> Labelled s, evar s) labels in
+             Exp.apply encoder args (* apply pre-decoded record fields *)
+         in
+         (ld.pld_name.txt, encoder))
+      labels in
   encoding_of_compound_type ~loc vars_encoders

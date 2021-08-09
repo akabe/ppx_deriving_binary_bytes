@@ -81,6 +81,19 @@ let test_binary_bytes_of_list ctxt =
     (Invalid_argument "inconsistent length of list")
     (fun () -> [%binary_bytes_of: uint16le list [@length 3]] b [0x1122; 0x3344; 0x1122; 0x3344])
 
+let test_binary_bytes_of_polymorphic_variant ctxt =
+  let b = BytesBuffer.create 1 in
+  [%binary_bytes_of: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@base_type: uint8]] b `A ;
+  let expected = b_ "\x1c" in
+  let actual = BytesBuffer.contents b in
+  assert_equal ~ctxt ~printer:[%show: bytes] expected actual
+  ;
+  let b = BytesBuffer.create 1 in
+  [%binary_bytes_of: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@base_type: uint8]] b (`B (0x11, 0x3322)) ;
+  let expected = b_ "\x01\x11\x22\x33" in
+  let actual = BytesBuffer.contents b in
+  assert_equal ~ctxt ~printer:[%show: bytes] expected actual
+
 let suite =
   "binary_bytes_of driver" >::: [
     "[%binary_bytes_of core-type]" >::: [
@@ -93,5 +106,6 @@ let suite =
       "tuple" >:: test_binary_bytes_of_tuple;
       "string" >:: test_binary_bytes_of_string;
       "list" >:: test_binary_bytes_of_list;
+      "polymorphic variant" >:: test_binary_bytes_of_polymorphic_variant;
     ];
   ]

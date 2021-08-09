@@ -161,6 +161,7 @@ and decoder_of_record ~deriver ~path ~constructor ~loc labels =
     List.fold_right
       (fun ld k' ->
          let loc = ld.pld_type.ptyp_loc in
+         let path = path ^ "." ^ ld.pld_name.txt in
          let decoder =
            match attr_decoder ~deriver ld.pld_attributes with
            | None ->
