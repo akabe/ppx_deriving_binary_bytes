@@ -20,11 +20,20 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
+open Ppx_deriving
+
 let () =
-  let open Ppx_deriving in
   let deriver = "of_binary_bytes" in
-  register (create "of_binary_bytes" ()
+  register (create "of_binary_bytes"
               ~core_type:(Decoder.decoder_of_core_type
                             ~deriver ~path:"<abstract>")
               ~type_decl_str:(Decoder.type_decl_str ~deriver)
-              ~type_decl_sig:Decoder.type_decl_sig)
+              ~type_decl_sig:Decoder.type_decl_sig
+              ())
+
+let () =
+  let deriver = "binary_bytes_of" in
+  register (create "binary_bytes_of"
+              ~core_type:(Encoder.encoder_of_core_type
+                            ~deriver ~path:"<abstract>")
+              ())

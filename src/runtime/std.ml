@@ -22,7 +22,8 @@
 
 (** Definitions for convenience *)
 
-exception Parse_error of string (** Deserialization errors [Error type_name] *)
+(** Deserialization errors [Error type_name] *)
+exception Parse_error of string
 
 (** {2 Integers} *)
 
