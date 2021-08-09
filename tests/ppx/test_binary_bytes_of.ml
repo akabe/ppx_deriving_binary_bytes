@@ -172,7 +172,7 @@ type t6 = [ `Foo | `Bar of uint16le ]
           [@base_type: uint16le]
 [@@deriving binary_bytes_of]
 
-let test_of_cstruct_str_poly_variant ctxt =
+let test_of_binary_bytes_str_poly_variant ctxt =
   let b = BytesBuffer.create 1 in
   [%binary_bytes_of: t6] b `Foo ;
   let expected = b_ "\x00\x00" in
@@ -271,7 +271,7 @@ let suite =
       "variant with tuple arguments" >:: test_binary_bytes_of_variant_tuple;
       "variant with record arguments" >:: test_binary_bytes_of_variant_record;
       "parametrized types" >:: test_binary_bytes_of_str_parametrized_type;
-      "polymorphic variant" >:: test_of_cstruct_str_poly_variant;
+      "polymorphic variant" >:: test_of_binary_bytes_str_poly_variant;
       "record (conditional field)" >:: test_binary_bytes_of_str_conditional_field;
       "record (bitfield)" >:: test_binary_bytes_of_str_bitfield;
     ];

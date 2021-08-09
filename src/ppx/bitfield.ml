@@ -1,4 +1,4 @@
-(* ppx_deriving_cstruct
+(* ppx_deriving_binary
 
    Copyright (c) 2021 Akinori Abe
 

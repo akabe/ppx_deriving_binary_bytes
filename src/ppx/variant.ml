@@ -44,7 +44,7 @@ let assert_not_GADT type_decl ocaml_constrs =
        | None -> ()
        | Some _ ->
          Ppx_deriving.raise_errorf ~loc:type_decl.ptype_loc
-           "ppx_deriving_cstruct does not support GADT: %s.%s"
+           "ppx_deriving_binary does not support GADT: %s.%s"
            type_decl.ptype_name.txt c.pcd_name.txt)
     ocaml_constrs
 
@@ -76,7 +76,7 @@ let constructors_of_ocaml_row_fields ~deriver ocaml_row_fields =
     match rf.prf_desc with
     | Rinherit _ ->
       Ppx_deriving.raise_errorf ~loc:rf.prf_loc
-        "ppx_deriving_cstruct does not support inheritance of \
+        "ppx_deriving_binary does not support inheritance of \
          polymorphic variants"
     | Rtag (label, _, arg_typs) ->
       let value = get_value ~deriver i rf.prf_attributes in

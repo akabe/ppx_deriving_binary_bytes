@@ -28,7 +28,7 @@ open Variant
 
 (* Naming rules:
    - [encoder_of_xxx] function converts [xxx] into an expression
-     of a type [CstructBuffer.t -> 'a -> unit].
+     of a type [BinaryBuffer.t -> 'a -> unit].
    - [encoding_of_xxx] function converts [xxx] into an expression
      for encoding a value, including [_b : BytesBuffer.t] and other
      free variables. *)
@@ -213,7 +213,7 @@ let str_encoder_of_type_decl ~deriver ~path type_decl =
       | Some typ -> encoder_of_core_type ~deriver ~path typ
       | None ->
         Ppx_deriving.raise_errorf
-          "ppx_deriving_cstruct does not support empty types: %s"
+          "ppx_deriving_binary does not support empty types: %s"
           type_decl.ptype_name.txt in
   (* Converts type parameters into function parameters *)
   Astmisc.parametrize_expression type_decl.ptype_params encoder
