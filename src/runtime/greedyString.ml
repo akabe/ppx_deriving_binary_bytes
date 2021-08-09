@@ -20,7 +20,15 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
-let () =
-  let open Ppx_deriving in
-  register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+(** Greedy strings *)
+
+type t = string
+
+let of_binary_bytes b i =
+  let n = Bytes.length b in
+  (Bytes.sub_string b i (n - i), n)
+
+let binary_bytes_of b s =
+  let i = BytesBuffer.length b in
+  let n = String.length s in
+  BytesBuffer.blit_string s 0 b i n

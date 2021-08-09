@@ -20,7 +20,29 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
-let () =
-  let open Ppx_deriving in
-  register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+(** Greedy lists
+
+    ['a GreedyList.t] is a type of lists whose elements have a type ['a].
+    Its elements are decoded as many as possible.
+
+    For example, binary data
+    {v
+00  11  22  33  44  55  66  77    88  99  aa  bb  cc  dd
+<--- x[0] --->  <--- x[1] --->    <--- x[2] --->
+v}
+    can be decoded to a list [[0x00112233l; 0x44556677l; 0x8899aabb]] as
+    a type [uint32be GreedyList.t]. The trailing [cc dd] is not able to
+    converted due to lack of length. *)
+
+type 'a t = 'a list
+
+let of_binary_bytes elm_of_binary_bytes cs i =
+  let rec aux acc i =
+    match elm_of_binary_bytes cs i with
+    | x, i -> aux (x :: acc) i
+    | exception Invalid_argument _ -> List.rev acc, i
+  in
+  aux [] i
+
+let binary_bytes_of binary_bytes_of_elt cb xs =
+  List.iter (binary_bytes_of_elt cb) xs

@@ -20,7 +20,15 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
-let () =
-  let open Ppx_deriving in
-  register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+open Format
+
+let pp_string_hex ppf s =
+  for i = 0 to String.length s - 1 do
+    fprintf ppf "%02x " (Char.code s.[i]) ;
+    if (i + 1) mod 8 == 0
+    then pp_print_newline ppf ()
+    else pp_print_char ppf ' '
+  done
+
+let pp_bytes_hex ppf b =
+  pp_string_hex ppf (Bytes.unsafe_to_string b)

@@ -20,7 +20,29 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
-let () =
-  let open Ppx_deriving in
-  register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+(** Conversion on C-style strings
+
+    [CString.t] is corresponding to null-terminated string. For example,
+    string ["Hello"] is encoded as ["Hello\x00"]. *)
+
+type t = string
+
+let of_binary_bytes b i =
+  let n = Bytes.length b in
+  let buf = Buffer.create 8 in
+  let rec aux i =
+    if i >= n then n else begin
+      let c = Bytes.get b i in
+      if c = '\x00' then i + 1 else begin
+        Buffer.add_char buf c ;
+        aux (i + 1)
+      end
+    end in
+  let j = aux i in
+  Buffer.contents buf, j
+
+let binary_bytes_of buf s =
+  let len = String.length s in
+  let ofs = BytesBuffer.length buf in
+  BytesBuffer.blit_string s 0 buf ofs len ;
+  BytesBuffer.set_char buf (ofs + len) '\x00'

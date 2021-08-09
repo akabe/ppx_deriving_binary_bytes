@@ -1,6 +1,6 @@
 (executables
  (names      runtest)
- (preprocess (pps ppx_deriving_binary ppx_deriving.show))
+ (preprocess (pps ppx_deriving.show))
  (libraries  ounit2
              ppx_deriving.runtime
              ppx_deriving_binary.runtime)

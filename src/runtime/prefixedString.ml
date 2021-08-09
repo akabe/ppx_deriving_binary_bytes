@@ -20,7 +20,25 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
-let () =
-  let open Ppx_deriving in
-  register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+(** Prefixed strings
+
+    ['a PrefixedString.t] is a type of strings with prefixes of a type ['a].
+
+    For example, a string ["Hello"] is represented as follows:
+    {v
+05  00  48  65  6c  6c  6f
+<---->  H   e   l   l   o
+# of characters
+v} *)
+
+type 'a t = string
+
+let of_binary_bytes prefix_of_binary_bytes b i =
+  let n, j = prefix_of_binary_bytes b i in
+  (Bytes.sub_string b j n, j + n)
+
+let binary_bytes_of prefix_binary_bytes_of buf s =
+  let len = String.length s in
+  prefix_binary_bytes_of buf len ;
+  let ofs = BytesBuffer.length buf in
+  BytesBuffer.blit_string s 0 buf ofs len ;

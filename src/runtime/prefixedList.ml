@@ -20,7 +20,33 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    SOFTWARE. *)
 
-let () =
-  let open Ppx_deriving in
-  register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+(** Prefixed lists
+
+    [('a, 'b) PrefixedList.t] is a type of lists of elements of a type ['a],
+    and a prefix of a type ['b].
+
+    For example, [[0x00112233l; 0x44556677l; 0x8899aabb]] of a type
+    [(uint32be, uint16be) PrefixedList.t] is represented as
+    - the heading two bytes for the length of a list (0x0003), and
+    - the 4x3 bytes for contents of a list.
+    {v
+00  03  00  11  22  33  44  55  66  77  88  99  aa  bb
+<---->  <--- x[0] --->  <--- x[1] --->  <--- x[2] --->
+# of elements
+v} *)
+
+type ('a, 'b) t = 'a list
+
+let of_binary_bytes elt_of_binary_bytes prefix_of_binary_bytes cs ofs =
+  let n, ofs = prefix_of_binary_bytes cs ofs in
+  let rec aux acc i ofs =
+    if n <= i then List.rev acc, ofs else begin
+      let x, ofs = elt_of_binary_bytes cs ofs in
+      aux (x :: acc) (i + 1) ofs
+    end in
+  aux [] 0 ofs
+
+let binary_bytes_of binary_bytes_of_elt binary_bytes_of_prefix cb xs =
+  let len = List.length xs in
+  binary_bytes_of_prefix cb len ;
+  List.iter (binary_bytes_of_elt cb) xs

@@ -13,4 +13,7 @@
                 ppx_deriving.runtime
                 ppx_deriving.api)
  (kind          ppx_deriver)
- (modules       Ppx_deriving_binary))
+ (modules       Ppx_deriving_binary
+                Decoder
+                Variant
+                Astmisc))
