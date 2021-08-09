@@ -23,4 +23,6 @@
 let () =
   let open Ppx_deriving in
   register (create "of_binary_bytes" ()
-              ~core_type:(Decoder.decoder_of_core_type ~deriver:"of_binary_bytes"))
+              ~core_type:(Decoder.decoder_of_core_type
+                            ~deriver:"of_binary_bytes"
+                            ~path:"<abstract>"))

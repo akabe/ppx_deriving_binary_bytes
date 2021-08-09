@@ -82,6 +82,17 @@ let test_of_binary_bytes_list ctxt =
   let expected = (['H'; 'e'; 'l'; 'l'; 'o'], 6) in
   assert_equal ~ctxt ~printer:[%show: char list * int] expected actual
 
+let test_of_binary_bytes_polymorphic_variant ctxt =
+  let b = b_ "\x00\x1c" in
+  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@t: uint8]] b 1 in
+  let expected = (`A, 2) in
+  assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8 * uint16le ] * int] expected actual
+  ;
+  let b = b_ "\x00\x01\x11\x22\x33" in
+  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@t: uint8]] b 1 in
+  let expected = (`B (0x11, 0x3322), 5) in
+  assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8 * uint16le ] * int] expected actual
+
 let suite =
   "of_binary_bytes driver" >::: [
     "[%of_binary_bytes: core-type]" >::: [
@@ -96,5 +107,6 @@ let suite =
       "tuple" >:: test_of_binary_bytes_tuple;
       "string" >:: test_of_binary_bytes_string;
       "list" >:: test_of_binary_bytes_list;
+      "polymorphic_variant" >:: test_of_binary_bytes_polymorphic_variant;
     ]
   ]

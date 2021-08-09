@@ -43,7 +43,7 @@ let erecord labels =
       labels in
   Exp.record label_bindings None
 
-let rec decoder_of_core_type ~deriver typ =
+let rec decoder_of_core_type ~deriver ~path typ =
   let loc = typ.ptyp_loc in
   match typ with
   | [%type: unit] -> [%expr fun _ _i -> ((), _i)]
@@ -56,24 +56,26 @@ let rec decoder_of_core_type ~deriver typ =
     decoder_of_string_like_type ~deriver typ
       ~func:[%expr Ppx_deriving_binary_runtime.Std.bytes_of_binary_bytes]
   | [%type: [%t? elt] list] ->
-    decoder_of_list_like_type ~deriver typ elt
+    decoder_of_list_like_type ~deriver ~path typ elt
       ~func:[%expr Ppx_deriving_binary_runtime.Std.list_of_binary_bytes]
   | [%type: [%t? elt] array] ->
-    decoder_of_list_like_type ~deriver typ elt
+    decoder_of_list_like_type ~deriver ~path typ elt
       ~func:[%expr Ppx_deriving_binary_runtime.Std.array_of_binary_bytes]
   | [%type: [%t? typ] ref] ->
     [%expr fun _b _i ->
-      let _x, _i = [%e decoder_of_core_type ~deriver typ] _b _i in
+      let _x, _i = [%e decoder_of_core_type ~deriver ~path typ] _b _i in
       (ref _x, _i)]
   | { ptyp_desc = Ptyp_constr (lid, args); _ } ->
     let f = Exp.ident (mknoloc (Ppx_deriving.mangle_lid affix lid.txt)) in
-    let args' = List.map (decoder_of_core_type ~deriver) args in
+    let args' = List.map (decoder_of_core_type ~deriver ~path) args in
     let fwd = app f args' in
     [%expr fun _b _i -> [%e fwd] _b _i]
   | { ptyp_desc = Ptyp_tuple typs; _ } ->
-    decoder_of_tuple ~deriver ~constructor:(fun exps -> Exp.tuple exps) ~loc typs
+    decoder_of_tuple ~deriver ~path ~constructor:(fun exps -> Exp.tuple exps) ~loc typs
   | { ptyp_desc = Ptyp_var name; _ } ->
     [%expr ([%e evar ("poly_" ^ name)] : bytes -> int -> _ * int)]
+  | { ptyp_desc = Ptyp_variant (rows, Closed, None); _ } ->
+    decoder_of_polymorphic_variant ~deriver ~path ~loc rows typ.ptyp_attributes
   (* Errors *)
   | _ ->
     Ppx_deriving.raise_errorf ~loc "%s cannot be derived for %s"
@@ -84,25 +86,76 @@ and decoder_of_string_like_type ~deriver ~func t =
   let len = Astmisc.attr_length_exn ~loc ~deriver t.ptyp_attributes in
   [%expr [%e func] ~n:[%e Astmisc.eint len]]
 
-and decoder_of_list_like_type ~deriver ~func t elt =
-  let decoder = decoder_of_core_type ~deriver elt in
+and decoder_of_list_like_type ~deriver ~path ~func t elt =
+  let decoder = decoder_of_core_type ~deriver ~path elt in
   let loc = t.ptyp_loc in
   let len = Astmisc.attr_length_exn ~loc ~deriver t.ptyp_attributes in
   [%expr [%e func] ~n:[%e Astmisc.eint len] [%e decoder]]
 
-and decoder_of_tuple ~deriver ~constructor ~loc typs =
+and decoder_of_tuple ~deriver ~path ~constructor ~loc typs =
   let vars_typs = List.mapi (fun i t -> (sprintf "_%d" i, t)) typs in
   let tuple = constructor (List.map (fun (s, _) -> evar s) vars_typs) in
   let body =
     List.fold_right
       (fun (x, t) k' ->
          let loc = t.ptyp_loc in
-         let decoder = decoder_of_core_type ~deriver t in
+         let decoder = decoder_of_core_type ~deriver ~path t in
          [%expr let ([%p pvar x], _i) = [%e decoder] _b _i in [%e k']])
       vars_typs [%expr ([%e tuple], _i)] in
   [%expr fun _b _i -> [%e body]]
 
-and decoder_of_record ~deriver ~constructor ~loc labels =
+and decoder_of_polymorphic_variant
+    ~deriver
+    ~path
+    ~loc
+    row_fields attrs
+  =
+  let base_type = Astmisc.attr_base_type ~deriver ~loc attrs in
+  Variant.constructors_of_ocaml_row_fields ~deriver row_fields
+  |> decoder_of_constructors
+    ~deriver ~path ~base_type ~loc
+    ~constructor:Exp.variant
+
+and decoder_of_constructors
+    ~deriver
+    ~path
+    ~base_type
+    ~loc
+    ~constructor
+    (constrs : Variant.constructor list)
+  =
+  let case_of_constructor c =
+    let loc = c.con_loc in
+    let name = c.Variant.con_name in
+    let tag = Pat.constant c.Variant.con_value in
+    let path' = path ^ "." ^ c.con_name in
+    let decoder =
+      match c.con_args with
+      | `TUPLE typs -> (* C (arg1, ..., argN) *)
+        decoder_of_tuple
+          ~deriver ~path:path' ~loc typs
+          ~constructor:(function
+              | [] -> constructor name None
+              | [_] -> constructor name (Some [%expr _0])
+              | exps -> constructor name (Some (Exp.tuple exps)))
+      | `RECORD labels -> (* C { label1: arg1; ...; labelN: argN; } *)
+        decoder_of_record
+          ~deriver ~path:path' ~loc:c.con_loc labels
+          ~constructor:(fun args -> constructor name (Some args))
+    in
+    Exp.case tag [%expr [%e decoder] _b _i]
+  in
+  let cases = List.map case_of_constructor constrs in
+  let err_mesg = Astmisc.estring ~loc path in
+  let raise_ = [%expr raise (Ppx_deriving_binary_runtime.Std.Parse_error [%e err_mesg])] in
+  let cases = cases @ [Exp.case [%pat? _] raise_] in
+  let base_decoder = decoder_of_core_type ~deriver ~path base_type in
+  [%expr
+    fun _b _i ->
+      let _x, _i = [%e base_decoder] _b _i in
+      [%e Exp.match_ [%expr _x] cases]]
+
+and decoder_of_record ~deriver ~path ~constructor ~loc labels =
   let record = constructor (erecord labels) in
   let body =
     List.fold_right
@@ -110,8 +163,9 @@ and decoder_of_record ~deriver ~constructor ~loc labels =
          let loc = ld.pld_type.ptyp_loc in
          let decoder =
            match attr_decoder ~deriver ld.pld_attributes with
-           | None -> decoder_of_core_type ~deriver ld.pld_type
-           | Some (labels, decoder) ->
+           | None ->
+             decoder_of_core_type ~deriver ~path ld.pld_type
+           | Some (labels, decoder) -> (* a decoder function is given by a user. *)
              let args = List.map (fun s -> Labelled s, evar s) labels in
              Exp.apply decoder args (* apply pre-decoded record fields *)
          in

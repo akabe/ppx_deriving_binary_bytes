@@ -63,6 +63,17 @@ let binary_bytes_of_int32le = BytesBuffer.add_int32le
 let binary_bytes_of_int64be = BytesBuffer.add_int64be
 let binary_bytes_of_int64le = BytesBuffer.add_int64le
 
+let pp_int8 = Format.pp_print_int
+let pp_uint8 = Format.pp_print_int
+let pp_int16be = Format.pp_print_int
+let pp_int16le = Format.pp_print_int
+let pp_uint16be = Format.pp_print_int
+let pp_uint16le = Format.pp_print_int
+let pp_int32be ppf = Format.fprintf ppf "%ld"
+let pp_int32le ppf = Format.fprintf ppf "%ld"
+let pp_int64be ppf = Format.fprintf ppf "%Ld"
+let pp_int64le ppf = Format.fprintf ppf "%Ld"
+
 (** {3 Aliases of [int]} *)
 
 type int32bei = int
@@ -79,6 +90,11 @@ let binary_bytes_of_int32bei b x = BytesBuffer.add_int32be b (Int32.of_int x)
 let binary_bytes_of_int32lei b x = BytesBuffer.add_int32le b (Int32.of_int x)
 let binary_bytes_of_int64bei b x = BytesBuffer.add_int64be b (Int64.of_int x)
 let binary_bytes_of_int64lei b x = BytesBuffer.add_int64le b (Int64.of_int x)
+
+let pp_int32bei = Format.pp_print_int
+let pp_int32lei = Format.pp_print_int
+let pp_int64bei = Format.pp_print_int
+let pp_int64lei = Format.pp_print_int
 
 (** {2 Floating-point values} *)
 
@@ -102,6 +118,11 @@ let float64be_of_binary_bytes cs i =
 let float64le_of_binary_bytes cs i =
   let n, i = int64le_of_binary_bytes cs i in
   Int64.float_of_bits n, i
+
+let pp_float32be = Format.pp_print_float
+let pp_float32le = Format.pp_print_float
+let pp_float64be = Format.pp_print_float
+let pp_float64le = Format.pp_print_float
 
 (** {2 Constant-length string-like types} *)
 
