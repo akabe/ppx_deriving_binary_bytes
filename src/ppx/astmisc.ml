@@ -30,19 +30,25 @@ let pint ?loc ?suffix x = Pat.constant ?loc (Const.int ?suffix x)
 let eint ?loc ?suffix x = Exp.constant ?loc (Const.int ?suffix x)
 let estring ?loc x = Exp.constant ?loc (Const.string x)
 
-let attr_base_type ~deriver attrs =
+let attr_type ~deriver attrs =
   let open Ppx_deriving in
-  match attr ~deriver "base_type" attrs with
+  match attr ~deriver "type" attrs with
   | Some { attr_payload = PTyp core_type; _ } -> Some core_type
   | _ -> None
 
-let attr_base_type_exn ~deriver ~loc attrs =
+let attr_tag_type ~deriver attrs =
   let open Ppx_deriving in
-  match attr_base_type ~deriver attrs with
+  match attr ~deriver "tag_type" attrs with
+  | Some { attr_payload = PTyp core_type; _ } -> Some core_type
+  | _ -> None
+
+let attr_tag_type_exn ~deriver ~loc attrs =
+  let open Ppx_deriving in
+  match attr_tag_type ~deriver attrs with
   | Some core_type -> core_type
   | None ->
     Ppx_deriving.raise_errorf ~loc
-      "ppx_deriving_binary_bytes requires [@base_type: t] for variants or polymorphic variants"
+      "ppx_deriving_binary_bytes requires [@tag_type: t] for variants or polymorphic variants"
 
 let attr_length ~deriver attrs =
   Ppx_deriving.(attrs |> attr ~deriver "length" |> Arg.(get_attr ~deriver int))
