@@ -110,16 +110,16 @@ and decoder_of_polymorphic_variant
     ~loc
     row_fields attrs
   =
-  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
+  let tag_type = Astmisc.attr_tag_type_exn ~deriver ~loc attrs in
   Variant.constructors_of_ocaml_row_fields ~deriver row_fields
   |> decoder_of_constructors
-    ~deriver ~path ~base_type ~loc
+    ~deriver ~path ~tag_type ~loc
     ~constructor:(fun name -> Exp.variant name)
 
 and decoder_of_constructors
     ~deriver
     ~path
-    ~base_type
+    ~tag_type
     ~loc
     ~constructor
     (constrs : Variant.constructor list)
@@ -149,7 +149,7 @@ and decoder_of_constructors
   let err_mesg = Astmisc.estring ~loc path in
   let raise_ = [%expr raise (Ppx_deriving_binary_bytes_runtime.Std.Parse_error [%e err_mesg])] in
   let cases = cases @ [Exp.case [%pat? _] raise_] in
-  let base_decoder = decoder_of_core_type ~deriver ~path base_type in
+  let base_decoder = decoder_of_core_type ~deriver ~path tag_type in
   [%expr
     fun _b _i ->
       let _x, _i = [%e base_decoder] _b _i in
@@ -178,12 +178,12 @@ and decoder_of_record ~deriver ~path ~constructor ~loc labels =
 
 let decoder_of_variant ~deriver ~path ~loc type_decl constrs attrs =
   Variant.assert_not_GADT type_decl constrs ;
-  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
+  let tag_type = Astmisc.attr_tag_type_exn ~deriver ~loc attrs in
   Variant.constructors_of_ocaml_constructors ~deriver constrs
   |> decoder_of_constructors
     ~deriver
     ~path
-    ~base_type
+    ~tag_type
     ~loc
     ~constructor:(fun name -> Exp.construct (Astmisc.mklid name))
 
@@ -221,7 +221,7 @@ let str_decoder_of_type_decl ~deriver ~path type_decl =
     (* Record type declaration: *)
     | Ptype_record labels ->
       begin
-        match Astmisc.attr_base_type ~deriver type_decl.ptype_attributes with
+        match Astmisc.attr_type ~deriver type_decl.ptype_attributes with
         | None ->
           decoder_of_record
             ~deriver ~path ~loc:type_decl.ptype_loc labels

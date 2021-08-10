@@ -84,12 +84,12 @@ let test_of_binary_bytes_list ctxt =
 
 let test_of_binary_bytes_polymorphic_variant ctxt =
   let b = b_ "\x00\x1c" in
-  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@base_type: uint8]] b 1 in
+  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@tag_type: uint8]] b 1 in
   let expected = (`A, 2) in
   assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8 * uint16le ] * int] expected actual
   ;
   let b = b_ "\x00\x01\x11\x22\x33" in
-  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@base_type: uint8]] b 1 in
+  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 * uint16le ] [@tag_type: uint8]] b 1 in
   let expected = (`B (0x11, 0x3322), 5) in
   assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8 * uint16le ] * int] expected actual
 
@@ -109,7 +109,7 @@ let test_of_binary_bytes_str_record ctxt =
 type t2 =
   | Foo [@value 0x42]
   | Bar
-[@@base_type: int32lei]
+[@@tag_type: int32lei]
 [@@deriving of_binary_bytes, show]
 
 let test_of_binary_bytes_str_variant_noargs ctxt =
@@ -129,7 +129,7 @@ let test_of_binary_bytes_str_variant_noargs ctxt =
 type t3 =
   | Foo of uint8
   | Bar of uint8 * uint16le
-[@@base_type: uint16le]
+[@@tag_type: uint16le]
 [@@deriving of_binary_bytes, show]
 
 let test_of_binary_bytes_str_variant_tuple ctxt =
@@ -145,7 +145,7 @@ let test_of_binary_bytes_str_variant_tuple ctxt =
 
 type t4 =
   | Foo of { a : uint8; b : uint16le; }
-[@@base_type: uint16le]
+[@@tag_type: uint16le]
 [@@deriving of_binary_bytes, show]
 
 let test_of_binary_bytes_str_variant_record ctxt =
@@ -163,7 +163,7 @@ let test_of_binary_bytes_str_parametrized_type ctxt =
   let expected = ((0x2211, 0x4433), 5) in
   assert_equal ~ctxt ~printer:[%show: (uint16le, uint16le) t5 * int] expected actual
 
-type t6 = [ `Foo | `Bar of uint16le ] [@base_type: uint16le]
+type t6 = [ `Foo | `Bar of uint16le ] [@tag_type: uint16le]
 [@@deriving of_binary_bytes, show]
 
 let test_of_binary_bytes_str_poly_variant ctxt =
@@ -211,7 +211,7 @@ type t10 =
     b2 : int;
     b3 : int [@offset 8] [@length 4];
   }
-[@@base_type: uint16be]
+[@@type: uint16be]
 [@@deriving of_binary_bytes, show]
 
 let test_of_binary_bytes_str_bitfield ctxt =

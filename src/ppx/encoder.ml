@@ -116,21 +116,21 @@ and encoding_of_tuple_type ~deriver ~path ~loc vars_typs =
   encoding_of_compound_type ~loc vars_encoders
 
 and encoder_of_polymorphic_variant ~deriver ~path ~loc row_fields attrs =
-  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
+  let tag_type = Astmisc.attr_tag_type_exn ~deriver ~loc attrs in
   Variant.constructors_of_ocaml_row_fields ~deriver row_fields
   |> encoder_of_constructors
-    ~deriver ~path ~loc ~base_type
+    ~deriver ~path ~loc ~tag_type
     ~constructor:(fun name -> Pat.variant name)
 
 and encoder_of_constructors
     ~deriver
     ~path
     ~loc
-    ~base_type
+    ~tag_type
     ~constructor
     (constrs : Variant.constructor list)
   =
-  let base_encoder = encoder_of_core_type ~deriver ~path base_type in
+  let base_encoder = encoder_of_core_type ~deriver ~path tag_type in
   let cases =
     constrs
     |> List.map (fun c ->
@@ -171,13 +171,13 @@ and encoding_of_record_type ~deriver ~path ~loc labels =
 let encoder_of_variant ~deriver ~path type_decl constrs attrs =
   Variant.assert_not_GADT type_decl constrs ;
   let loc = type_decl.ptype_loc in
-  let base_type = Astmisc.attr_base_type_exn ~deriver ~loc attrs in
+  let tag_type = Astmisc.attr_tag_type_exn ~deriver ~loc attrs in
   Variant.constructors_of_ocaml_constructors ~deriver constrs
   |> encoder_of_constructors
-    ~deriver ~path ~loc ~base_type
+    ~deriver ~path ~loc ~tag_type
     ~constructor:(fun name -> Pat.construct (Astmisc.mklid name))
 
-let encoding_of_record_bitfield ~deriver ~path ~loc ~base_type labels =
+let encoding_of_record_bitfield ~deriver ~path ~loc ~typ labels =
   let open Bitfield in
   let fields = Bitfield.of_ocaml_label_declarations ~deriver labels in
   let int_val =
@@ -188,7 +188,7 @@ let encoding_of_record_bitfield ~deriver ~path ~loc ~base_type labels =
         let mask = Exp.constant (Const.int field.rbf_mask) in
         [%expr (([%e name] land [%e mask]) lsl [%e ofs]) lor [%e acc]])
       [%expr 0] fields in
-  let base_encoder = encoder_of_core_type ~deriver ~path base_type in
+  let base_encoder = encoder_of_core_type ~deriver ~path typ in
   [%expr [%e base_encoder] _b [%e int_val]]
 
 let str_encoder_of_type_decl ~deriver ~path type_decl =
@@ -199,9 +199,9 @@ let str_encoder_of_type_decl ~deriver ~path type_decl =
     | Ptype_record labels ->
       let prj = prj_record labels in
       let body =
-        match Astmisc.attr_base_type ~deriver type_decl.ptype_attributes with
+        match Astmisc.attr_type ~deriver type_decl.ptype_attributes with
         | None -> encoding_of_record_type ~deriver ~path ~loc labels
-        | Some base_type -> encoding_of_record_bitfield ~deriver ~path ~loc ~base_type labels
+        | Some typ -> encoding_of_record_bitfield ~deriver ~path ~loc ~typ labels
       in
       [%expr fun _b [%p prj] -> [%e body]]
     (* (Non-polymorphics) variant type declarations: *)
