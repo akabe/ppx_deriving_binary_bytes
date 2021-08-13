@@ -35,10 +35,10 @@ type int16be = int
 type int16le = int
 type uint16be = int
 type uint16le = int
-type uint32be = int32
-type uint32le = int32
-type uint64be = int64
-type uint64le = int64
+type int32be = int32
+type int32le = int32
+type int64be = int64
+type int64le = int64
 
 let char_of_binary_bytes b i = (Bytes.get b i, i + 1)
 let int8_of_binary_bytes b i = (Bytes.get_int8 b i, i + 1)
