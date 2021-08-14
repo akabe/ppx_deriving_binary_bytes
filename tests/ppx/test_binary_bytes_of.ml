@@ -94,6 +94,19 @@ let test_binary_bytes_of_polymorphic_variant ctxt =
   let actual = BytesBuffer.contents b in
   assert_equal ~ctxt ~printer:[%show: bytes] expected actual
 
+let test_binary_bytes_of_polymorphic_variant_else ctxt =
+  let b = BytesBuffer.create 1 in
+  [%binary_bytes_of: [ `A [@value 0x1c] | `B of uint8 [@else]] [@tag_type: uint8]] b `A ;
+  let expected = b_ "\x1c" in
+  let actual = BytesBuffer.contents b in
+  assert_equal ~ctxt ~printer:[%show: bytes] expected actual
+  ;
+  let b = BytesBuffer.create 1 in
+  [%binary_bytes_of: [ `A [@value 0x1c] | `B of uint8 [@else]] [@tag_type: uint8]] b (`B 0x42) ;
+  let expected = b_ "\x42" in
+  let actual = BytesBuffer.contents b in
+  assert_equal ~ctxt ~printer:[%show: bytes] expected actual
+
 type t1 =
   {
     a : uint16be;
@@ -264,6 +277,7 @@ let suite =
       "string" >:: test_binary_bytes_of_string;
       "list" >:: test_binary_bytes_of_list;
       "polymorphic variant" >:: test_binary_bytes_of_polymorphic_variant;
+      "polymorphic variant (else)" >:: test_binary_bytes_of_polymorphic_variant_else;
     ];
     "[@@deriving binary_bytes_of] in structure" >::: [
       "record" >:: test_binary_bytes_of_record;

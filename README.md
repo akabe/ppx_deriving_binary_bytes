@@ -227,3 +227,30 @@ type t =
 [@tag_type: uint16le]
 [@@deriving binary_bytes]
 ```
+
+### ELSE-cases
+
+Variants and polymorphic variants support `[@else]` annotation.
+
+``` ocaml
+type t =
+  | A
+  | B
+  | C of uint8 [@else]
+[@@tag_type: uint16]
+[@@deriving binary_bytes]
+```
+
+In the above example, `A` and `B` have tags `0x0000` and `0x0001` respectively, while `C` has **no** tag.
+`C` is used when a given bytes cannot be decoded into `A` or `B`.
+
+``` ocaml
+# [%of_binary_bytes: t] (Bytes.of_string "\x00") ;;
+- : t = A
+# [%of_binary_bytes: t] (Bytes.of_string "\x01") ;;
+- : t = B
+# [%of_binary_bytes: t] (Bytes.of_string "\x02") ;;
+- : t = C 2
+# [%of_binary_bytes: t] (Bytes.of_string "\xff") ;;
+- : t = C 255
+```

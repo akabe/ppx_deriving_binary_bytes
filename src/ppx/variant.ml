@@ -31,12 +31,19 @@ type constuctor_arguments =
   ]
 
 type constructor =
-  {
-    con_name : string;
-    con_args : constuctor_arguments;
-    con_value : constant;
-    con_loc : Location.t;
-  }
+  | TAGGED of
+      {
+        name : string;
+        args : constuctor_arguments;
+        value : constant;
+        loc : Location.t;
+      }
+  | ELSE of
+      {
+        name : string;
+        args : constuctor_arguments;
+        loc : Location.t;
+      }
 
 let assert_not_GADT type_decl ocaml_constrs =
   List.iter
@@ -48,25 +55,31 @@ let assert_not_GADT type_decl ocaml_constrs =
            type_decl.ptype_name.txt c.pcd_name.txt)
     ocaml_constrs
 
-let get_value ~deriver i attrs =
+let get_value ~deriver default_value attrs =
   Ppx_deriving.(attrs |> attr ~deriver "value" |> Arg.(get_attr ~deriver expr))
   |> function
   | Some { pexp_desc = Pexp_constant const; _ } -> const
-  | _ -> Const.int i
+  | _ -> Const.int default_value
+
+let get_else_flag ~deriver attrs =
+  Ppx_deriving.(attrs |> attr ~deriver "else")
+  |> function
+  | None -> false
+  | Some _ -> true
 
 (** Converts a list of OCaml constructors into a list of constructors in this module. *)
 let constructors_of_ocaml_constructors ~deriver ocaml_constrs =
-  let aux i c =
-    let value = get_value ~deriver i c.pcd_attributes in
+  let aux default_value c =
+    let loc = c.pcd_loc in
+    let name = c.pcd_name.txt in
+    let value = get_value ~deriver default_value c.pcd_attributes in
+    let else_flag = get_else_flag ~deriver c.pcd_attributes in
     let args = match c.pcd_args with
       | Pcstr_tuple args -> `TUPLE args
       | Pcstr_record labels -> `RECORD labels in
-    {
-      con_name = c.pcd_name.txt;
-      con_args = args;
-      con_value = value;
-      con_loc = c.pcd_loc;
-    }
+    if else_flag
+    then ELSE { name; args; loc; }
+    else TAGGED { name; args; value; loc; }
   in
   List.mapi aux ocaml_constrs
 
@@ -79,12 +92,24 @@ let constructors_of_ocaml_row_fields ~deriver ocaml_row_fields =
         "ppx_deriving_binary_bytes does not support inheritance of \
          polymorphic variants"
     | Rtag (label, _, arg_typs) ->
+      let loc = rf.prf_loc in
+      let name = label.txt in
       let value = get_value ~deriver i rf.prf_attributes in
-      {
-        con_name = label.txt;
-        con_args = `TUPLE arg_typs;
-        con_value = value;
-        con_loc = rf.prf_loc;
-      }
+      let else_flag = get_else_flag ~deriver rf.prf_attributes in
+      let args = `TUPLE arg_typs in
+      if else_flag
+      then ELSE { name; args; loc; }
+      else TAGGED { name; args; value; loc; }
   in
   List.mapi aux ocaml_row_fields
+
+let invariant_constructors constrs =
+  let assert_else_is_singleton is_second_else c = match is_second_else, c with
+    | _, TAGGED _ -> is_second_else
+    | false, ELSE _ -> true
+    | true, ELSE c ->
+      Ppx_deriving.raise_errorf ~loc:c.loc
+        "Duplicated [@else]-annotatation on %s. \
+         [@else] must be singleton in a variant type." c.name
+  in
+  ignore (List.fold_left assert_else_is_singleton false constrs)

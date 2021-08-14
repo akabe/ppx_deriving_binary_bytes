@@ -93,6 +93,17 @@ let test_of_binary_bytes_polymorphic_variant ctxt =
   let expected = (`B (0x11, 0x3322), 5) in
   assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8 * uint16le ] * int] expected actual
 
+let test_of_binary_bytes_polymorphic_variant_else ctxt =
+  let b = b_ "\x00\x1c" in
+  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 [@else]] [@tag_type: uint8]] b 1 in
+  let expected = (`A, 2) in
+  assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8] * int] expected actual
+  ;
+  let b = b_ "\x00\x42" in
+  let actual = [%of_binary_bytes: [ `A [@value 0x1c] | `B of uint8 [@else]] [@tag_type: uint8]] b 1 in
+  let expected = (`B 0x42, 2) in
+  assert_equal ~ctxt ~printer:[%show: [ `A | `B of uint8] * int] expected actual
+
 type t1 =
   {
     a : uint16le;
@@ -288,6 +299,7 @@ let suite =
       "string" >:: test_of_binary_bytes_string;
       "list" >:: test_of_binary_bytes_list;
       "polymorphic_variant" >:: test_of_binary_bytes_polymorphic_variant;
+      "polymorphic_variant (else)" >:: test_of_binary_bytes_polymorphic_variant_else;
     ];
     "[@@deriving of_binary_bytes] in structure" >::: [
       "record" >:: test_of_binary_bytes_str_record;

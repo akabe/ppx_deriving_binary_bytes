@@ -124,36 +124,53 @@ and decoder_of_constructors
     ~constructor
     (constrs : Variant.constructor list)
   =
-  let case_of_constructor c =
-    let loc = c.con_loc in
-    let name = c.Variant.con_name in
-    let tag = Pat.constant c.Variant.con_value in
-    let path' = path ^ "." ^ c.con_name in
-    let decoder =
-      match c.con_args with
-      | `TUPLE typs -> (* C (arg1, ..., argN) *)
-        decoder_of_tuple
-          ~deriver ~path:path' ~loc typs
-          ~constructor:(function
-              | [] -> constructor name None
-              | [_] -> constructor name (Some [%expr _0])
-              | exps -> constructor name (Some (Exp.tuple exps)))
-      | `RECORD labels -> (* C { label1: arg1; ...; labelN: argN; } *)
-        decoder_of_record
-          ~deriver ~path:path' ~loc:c.con_loc labels
-          ~constructor:(fun args -> constructor name (Some args))
-    in
-    Exp.case tag [%expr [%e decoder] _b _i]
+  Variant.invariant_constructors constrs ;
+  let case_of_constructor = function
+    | Variant.TAGGED c ->
+      let loc = c.loc in
+      let decoder =
+        decoder_of_constructor_arguments
+          ~deriver ~path:(path ^ "." ^ c.name) ~loc ~name:c.name ~constructor c.args in
+      Exp.case (Pat.constant c.value) [%expr [%e decoder] _b _j]
+    | Variant.ELSE c ->
+      let loc = c.loc in
+      let decoder =
+        decoder_of_constructor_arguments
+          ~deriver ~path:(path ^ "." ^ c.name) ~loc ~name:c.name ~constructor c.args in
+      Exp.case [%pat? _] [%expr [%e decoder] _b _i]
   in
   let cases = List.map case_of_constructor constrs in
+  let exists_else = List.exists (function Variant.ELSE _ -> true | _ -> false) constrs in
   let err_mesg = Astmisc.estring ~loc path in
   let raise_ = [%expr raise (Ppx_deriving_binary_bytes_runtime.Std.Parse_error [%e err_mesg])] in
-  let cases = cases @ [Exp.case [%pat? _] raise_] in
+  let cases =
+    if exists_else
+    then cases
+    else cases @ [Exp.case [%pat? _] raise_] in
   let base_decoder = decoder_of_core_type ~deriver ~path tag_type in
   [%expr
     fun _b _i ->
-      let _x, _i = [%e base_decoder] _b _i in
+      let _x, _j = [%e base_decoder] _b _i in
       [%e Exp.match_ [%expr _x] cases]]
+
+and decoder_of_constructor_arguments
+    ~deriver
+    ~path
+    ~loc
+    ~name
+    ~constructor
+  = function
+    | `TUPLE typs -> (* C (arg1, ..., argN) *)
+      decoder_of_tuple
+        ~deriver ~path ~loc typs
+        ~constructor:(function
+            | [] -> constructor name None
+            | [_] -> constructor name (Some [%expr _0])
+            | exps -> constructor name (Some (Exp.tuple exps)))
+    | `RECORD labels -> (* C { label1: arg1; ...; labelN: argN; } *)
+      decoder_of_record
+        ~deriver ~path ~loc labels
+        ~constructor:(fun args -> constructor name (Some args))
 
 and decoder_of_record ~deriver ~path ~constructor ~loc labels =
   let record = constructor (erecord labels) in
