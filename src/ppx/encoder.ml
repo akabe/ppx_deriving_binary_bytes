@@ -92,15 +92,15 @@ let rec encoder_of_core_type ~deriver ~path typ =
       deriver (Ppx_deriving.string_of_core_type typ)
 
 and encoder_of_string_like_type ~deriver ~loc ~func t =
-  let len = Astmisc.attr_length_exn ~deriver ~loc t.ptyp_attributes in
+  let len = Astmisc.attr_length_expr_exn ~deriver ~loc t.ptyp_attributes in
   let loc = t.ptyp_loc in
-  [%expr [%e func] ~n:[%e Astmisc.eint len]]
+  [%expr [%e func] ~n:[%e len]]
 
 and encoder_of_list_like_type ~deriver ~path ~loc ~func t elt =
-  let len = Astmisc.attr_length_exn ~deriver ~loc t.ptyp_attributes in
+  let len = Astmisc.attr_length_expr_exn ~deriver ~loc t.ptyp_attributes in
   let encoder = encoder_of_core_type ~deriver ~path elt in
   let loc = t.ptyp_loc in
-  [%expr [%e func] ~n:[%e Astmisc.eint len] [%e encoder]]
+  [%expr [%e func] ~n:[%e len] [%e encoder]]
 
 and encoding_of_compound_type ~loc (vars_encoders : (string * expression) list) =
   List.fold_right

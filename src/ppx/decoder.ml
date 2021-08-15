@@ -83,14 +83,14 @@ let rec decoder_of_core_type ~deriver ~path typ =
 
 and decoder_of_string_like_type ~deriver ~func t =
   let loc = t.ptyp_loc in
-  let len = Astmisc.attr_length_exn ~loc ~deriver t.ptyp_attributes in
-  [%expr [%e func] ~n:[%e Astmisc.eint len]]
+  let len = Astmisc.attr_length_expr_exn ~loc ~deriver t.ptyp_attributes in
+  [%expr [%e func] ~n:[%e len]]
 
 and decoder_of_list_like_type ~deriver ~path ~func t elt =
   let decoder = decoder_of_core_type ~deriver ~path elt in
   let loc = t.ptyp_loc in
-  let len = Astmisc.attr_length_exn ~loc ~deriver t.ptyp_attributes in
-  [%expr [%e func] ~n:[%e Astmisc.eint len] [%e decoder]]
+  let len = Astmisc.attr_length_expr_exn ~loc ~deriver t.ptyp_attributes in
+  [%expr [%e func] ~n:[%e len] [%e decoder]]
 
 and decoder_of_tuple ~deriver ~path ~constructor ~loc typs =
   let vars_typs = List.mapi (fun i t -> (sprintf "_%d" i, t)) typs in

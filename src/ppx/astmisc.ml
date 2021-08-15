@@ -53,8 +53,11 @@ let attr_tag_type_exn ~deriver ~loc attrs =
 let attr_length ~deriver attrs =
   Ppx_deriving.(attrs |> attr ~deriver "length" |> Arg.(get_attr ~deriver int))
 
-let attr_length_exn ~deriver ~loc attrs =
-  match attr_length ~deriver attrs with
+let attr_length_expr ~deriver attrs =
+  Ppx_deriving.(attrs |> attr ~deriver "length" |> Arg.(get_attr ~deriver expr))
+
+let attr_length_expr_exn ~deriver ~loc attrs =
+  match attr_length_expr ~deriver attrs with
   | Some x -> x
   | None ->
     Ppx_deriving.raise_errorf ~loc
